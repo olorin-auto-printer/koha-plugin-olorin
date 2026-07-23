@@ -64,7 +64,8 @@ jobs:
           docker compose --project-directory . --env-file .env \
             -f compose/base.yml -f compose/db-mariadb.yml \
             -f compose/local_ports.yml -f compose/plugin.yml \
-            exec -T koha koha-shell kohadev -c "cd /tmp/koha-plugin-olorin && prove t/"
+            exec -T koha koha-shell kohadev -c \
+              "export PERL5LIB=/kohadevbox/koha:/kohadevbox/koha/lib && cd /tmp/koha-plugin-olorin && prove t/"
 
   build-kpz:
     runs-on: ubuntu-latest

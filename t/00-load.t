@@ -33,7 +33,6 @@ my ($custom_index) = grep { $types->[$_]->{key} eq 'patron_custom' } 0 .. $#$typ
 my @named_printslip = grep {
     $types->[$_]->{path} eq '/members/printslip.pl' && $types->[$_]->{key} ne 'patron_custom'
 } 0 .. $#$types;
-ok( $custom_index > $_, "patron_custom is ordered after $types->[$_]{key}" ) for ();
 is( scalar(@named_printslip), 3, 'three named printslip.pl slip types exist' );
 ok( ( !grep { $_ > $custom_index } @named_printslip ),
     'patron_custom catch-all is ordered after all named printslip.pl types' );
