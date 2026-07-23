@@ -47,16 +47,22 @@ jobs:
             -f compose/base.yml -f compose/db-mariadb.yml \
             -f compose/local_ports.yml -f compose/plugin.yml up -d
       - name: Wait for Koha
+        working-directory: ktd
         run: |
-          for i in $(seq 1 90); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/ || true)
-            if [ "$code" = "200" ] || [ "$code" = "302" ]; then
-              echo "Koha is up (HTTP $code)"; exit 0
+          # KTD touches /ktd_ready in the koha container once the database is
+          # populated and services are up — the same marker its own
+          # --wait-ready uses
+          for i in $(seq 1 120); do
+            if docker compose --project-directory . --env-file .env \
+                -f compose/base.yml -f compose/db-mariadb.yml \
+                -f compose/local_ports.yml -f compose/plugin.yml \
+                exec -T koha bash -c '[ -e /ktd_ready ]' 2>/dev/null; then
+              echo "KTD is ready"; exit 0
             fi
             sleep 10
           done
-          echo "Koha never became ready"
-          cd ktd && docker compose --project-directory . --env-file .env -f compose/base.yml -f compose/db-mariadb.yml -f compose/local_ports.yml -f compose/plugin.yml logs koha | tail -50
+          echo "KTD never became ready"
+          docker compose --project-directory . --env-file .env -f compose/base.yml -f compose/db-mariadb.yml -f compose/local_ports.yml -f compose/plugin.yml logs koha | tail -50
           exit 1
       - name: Run plugin tests
         working-directory: ktd
