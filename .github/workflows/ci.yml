@@ -22,38 +22,49 @@ jobs:
 
   perl-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           path: plugin
-      - uses: actions/checkout@v4
-        with:
-          repository: KohaCommunity/koha-testing-docker
-          path: ktd
+      - name: Clone koha-testing-docker and Koha
+        run: |
+          git clone --depth 1 https://gitlab.com/koha-community/koha-testing-docker.git ktd
+          git clone --depth 1 https://git.koha-community.org/Koha-community/Koha.git koha
       - name: Start KTD with the plugin mounted
         working-directory: ktd
         run: |
-          cat > docker-compose.plugin.yml <<'EOF'
+          cp env/defaults.env .env
+          echo "SYNC_REPO=${GITHUB_WORKSPACE}/koha" >> .env
+          echo "LOCAL_USER_ID=$(id -u)" >> .env
+          cat > compose/plugin.yml <<EOF
           services:
             koha:
               volumes:
                 - ${GITHUB_WORKSPACE}/plugin:/tmp/koha-plugin-olorin
           EOF
-          export KOHA_IMAGE=main
-          export SYNC_REPO=
-          docker compose -f docker-compose.light.yml -f docker-compose.plugin.yml up -d || \
-            docker compose -f docker-compose.yml -f docker-compose.plugin.yml up -d
+          docker compose --env-file .env \
+            -f compose/base.yml -f compose/db-mariadb.yml \
+            -f compose/local_ports.yml -f compose/plugin.yml up -d
       - name: Wait for Koha
-        working-directory: ktd
         run: |
-          for i in $(seq 1 60); do
-            docker compose logs koha 2>/dev/null | grep -q "koha-plack.*start\|Everything is ready" && break
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/ || true)
+            if [ "$code" = "200" ] || [ "$code" = "302" ]; then
+              echo "Koha is up (HTTP $code)"; exit 0
+            fi
             sleep 10
           done
-          docker compose ps
+          echo "Koha never became ready"
+          cd ktd && docker compose --env-file .env -f compose/base.yml -f compose/db-mariadb.yml -f compose/local_ports.yml -f compose/plugin.yml logs koha | tail -50
+          exit 1
       - name: Run plugin tests
         working-directory: ktd
-        run: docker compose exec -T koha bash -c "cd /tmp/koha-plugin-olorin && prove t/"
+        run: |
+          docker compose --env-file .env \
+            -f compose/base.yml -f compose/db-mariadb.yml \
+            -f compose/local_ports.yml -f compose/plugin.yml \
+            exec -T koha koha-shell kohadev -c "cd /tmp/koha-plugin-olorin && prove t/"
 
   build-kpz:
     runs-on: ubuntu-latest
