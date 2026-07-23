@@ -1,0 +1,189 @@
+[% USE raw %]
+[% USE Koha %]
+[% PROCESS 'i18n.inc' %]
+[% INCLUDE 'doc-head-open.inc' %]
+<title>Olorin silent printing &rsaquo; Plugins &rsaquo; Administration &rsaquo; Koha</title>
+[% INCLUDE 'doc-head-close.inc' %]
+</head>
+
+<body id="admin_plugins" class="admin">
+[% WRAPPER 'header.inc' %]
+    [% INCLUDE 'prefs-admin-search.inc' %]
+[% END %]
+
+[% WRAPPER 'sub-header.inc' %]
+    [% WRAPPER breadcrumbs %]
+        [% WRAPPER breadcrumb_item %]
+            <a href="/cgi-bin/koha/admin/admin-home.pl">Administration</a>
+        [% END %]
+        [% WRAPPER breadcrumb_item %]
+            <a href="/cgi-bin/koha/plugins/plugins-home.pl">Plugins</a>
+        [% END %]
+        [% WRAPPER breadcrumb_item bc_active = 1 %]
+            <span>Olorin silent printing</span>
+        [% END %]
+    [% END #/ WRAPPER breadcrumbs %]
+[% END #/ WRAPPER sub-header.inc %]
+
+<div class="main container-fluid">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+
+            <h1>Olorin silent printing</h1>
+
+            [% IF saved %]
+                <div class="alert alert-info">Configuration saved.</div>
+            [% END %]
+
+            <div class="page-section" id="olorin-status-panel">
+                <h2>Companion App</h2>
+                <p>
+                    Each workstation needs the
+                    <a href="https://github.com/olorin-auto-printer/olorin-companion-app/releases">Olorin Companion App</a>
+                    running. Use this check on every workstation once — on Chrome it also
+                    triggers the one-time local network permission prompt.
+                </p>
+                <button type="button" class="btn btn-primary" id="olorin-check">Check companion</button>
+                <span id="olorin-check-result" style="margin-left: 10px"></span>
+            </div>
+
+            <form method="post" id="olorin-config-form">
+                [% INCLUDE 'csrf-token.inc' %]
+                <input type="hidden" name="class" value="[% CLASS | html %]" />
+                <input type="hidden" name="method" value="[% METHOD | html %]" />
+                <input type="hidden" name="op" value="cud-save" />
+
+                <div class="page-section">
+                    <h2>Slip printing</h2>
+                    <p>
+                        Modes: <strong>Off</strong> leaves Koha's normal print dialog untouched.
+                        <strong>Manual</strong> replaces it with a "Print via Olorin" button.
+                        <strong>Auto</strong> prints silently as soon as the slip loads.
+                        Which physical printer each type reaches is configured per workstation
+                        in the Companion App.
+                    </p>
+                    <table class="table" id="olorin-types">
+                        <thead>
+                            <tr>
+                                <th>Slip</th>
+                                <th>Mode</th>
+                                <th>Printer</th>
+                                <th>Close popup after printing</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            [% FOREACH type IN slip_types %]
+                                [% SET settings = config.types.item(type.key) %]
+                                <tr>
+                                    <td>[% type.label | html %]</td>
+                                    <td>
+                                        <select name="mode_[% type.key | html %]" class="form-select">
+                                            [% FOREACH mode IN ['off', 'manual', 'auto'] %]
+                                                <option value="[% mode | html %]" [% IF settings.mode == mode %]selected[% END %]>
+                                                    [% SWITCH mode %]
+                                                    [% CASE 'off' %]Off
+                                                    [% CASE 'manual' %]Manual button
+                                                    [% CASE 'auto' %]Auto-print
+                                                    [% END %]
+                                                </option>
+                                            [% END %]
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="printer_[% type.key | html %]" class="form-select">
+                                            [% FOREACH printer IN printer_keys %]
+                                                <option value="[% printer | html %]" [% IF settings.printer == printer %]selected[% END %]>
+                                                    [% printer.replace('_', ' ') | html %]
+                                                </option>
+                                            [% END %]
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="checkbox" name="auto_close_[% type.key | html %]" value="1" [% IF settings.auto_close %]checked[% END %] />
+                                        [% IF type.supports_drawer %]
+                                            <label style="margin-left: 12px">
+                                                <input type="checkbox" name="kick_drawer_[% type.key | html %]" value="1" [% IF settings.kick_drawer %]checked[% END %] />
+                                                Open cash drawer
+                                            </label>
+                                        [% END %]
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-default btn-sm olorin-test" data-type="[% type.key | html %]">Test</button>
+                                        <span class="olorin-test-result" data-type="[% type.key | html %]"></span>
+                                    </td>
+                                </tr>
+                            [% END %]
+                        </tbody>
+                    </table>
+
+                    <fieldset class="rows">
+                        <ol>
+                            <li>
+                                <label for="close_delay_ms">Close delay (ms):</label>
+                                <input type="number" name="close_delay_ms" id="close_delay_ms" min="0" max="10000" value="[% config.close_delay_ms | html %]" />
+                                <span class="hint">How long to wait after a successful print before closing the popup.</span>
+                            </li>
+                        </ol>
+                    </fieldset>
+
+                    <fieldset class="action">
+                        <button type="submit" class="btn btn-primary">Save configuration</button>
+                    </fieldset>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<div id="olorin-test-slip" style="display: none">
+    <h3>OLORIN TEST SLIP</h3>
+    <p>[% Koha.Preference('LibraryName') | html %]</p>
+    <p>Printed from the Olorin plugin configuration page.</p>
+</div>
+
+[% MACRO jsinclude BLOCK %]
+    <script src="[% olorin_js | $raw %]"></script>
+    <script>
+        document.getElementById("olorin-check").addEventListener("click", function () {
+            var out = document.getElementById("olorin-check-result");
+            out.textContent = "Checking…";
+            window.Olorin.status().then(function (status) {
+                if (status.reachable) {
+                    out.textContent =
+                        "✓ Companion v" + status.version + " reachable (via " + status.transport + ")";
+                    out.style.color = "#2e7d32";
+                } else {
+                    out.textContent = "✗ " + (status.error || "Not reachable");
+                    out.style.color = "#b71c1c";
+                }
+            });
+        });
+
+        document.querySelectorAll(".olorin-test").forEach(function (button) {
+            button.addEventListener("click", function () {
+                var key = button.dataset.type;
+                var row = button.closest("tr");
+                var printer = row.querySelector('select[name="printer_' + key + '"]').value;
+                var out = row.querySelector(".olorin-test-result");
+                out.textContent = "Printing…";
+                out.style.color = "";
+                window.Olorin.print({
+                    printer: printer,
+                    content: document.getElementById("olorin-test-slip").innerHTML,
+                }).then(
+                    function () {
+                        out.textContent = "✓ Printed via " + printer;
+                        out.style.color = "#2e7d32";
+                    },
+                    function (error) {
+                        out.textContent = "✗ " + error.message;
+                        out.style.color = "#b71c1c";
+                    }
+                );
+            });
+        });
+    </script>
+[% END %]
+[% INCLUDE 'intranet-bottom.inc' %]

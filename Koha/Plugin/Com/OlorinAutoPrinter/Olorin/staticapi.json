@@ -1,0 +1,44 @@
+{
+  "/js/olorin.js": {
+    "get": {
+      "x-mojo-to": "Static#get",
+      "operationId": "olorinStaticLibrary",
+      "tags": ["olorin"],
+      "produces": ["application/javascript"],
+      "parameters": [
+        {
+          "name": "v",
+          "in": "query",
+          "description": "Cache buster carrying the plugin version",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "200": { "description": "The Olorin client library" },
+        "404": { "description": "File not found" }
+      }
+    }
+  },
+  "/js/olorin-koha.js": {
+    "get": {
+      "x-mojo-to": "Static#get",
+      "operationId": "olorinStaticKohaController",
+      "tags": ["olorin"],
+      "produces": ["application/javascript"],
+      "parameters": [
+        {
+          "name": "v",
+          "in": "query",
+          "description": "Cache buster carrying the plugin version",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "200": { "description": "The Olorin Koha slip-page controller" },
+        "404": { "description": "File not found" }
+      }
+    }
+  }
+}

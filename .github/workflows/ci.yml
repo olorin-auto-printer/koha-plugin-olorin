@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  perl-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+      - uses: actions/checkout@v4
+        with:
+          repository: KohaCommunity/koha-testing-docker
+          path: ktd
+      - name: Start KTD with the plugin mounted
+        working-directory: ktd
+        run: |
+          cat > docker-compose.plugin.yml <<'EOF'
+          services:
+            koha:
+              volumes:
+                - ${GITHUB_WORKSPACE}/plugin:/tmp/koha-plugin-olorin
+          EOF
+          export KOHA_IMAGE=main
+          export SYNC_REPO=
+          docker compose -f docker-compose.light.yml -f docker-compose.plugin.yml up -d || \
+            docker compose -f docker-compose.yml -f docker-compose.plugin.yml up -d
+      - name: Wait for Koha
+        working-directory: ktd
+        run: |
+          for i in $(seq 1 60); do
+            docker compose logs koha 2>/dev/null | grep -q "koha-plack.*start\|Everything is ready" && break
+            sleep 10
+          done
+          docker compose ps
+      - name: Run plugin tests
+        working-directory: ktd
+        run: docker compose exec -T koha bash -c "cd /tmp/koha-plugin-olorin && prove t/"
+
+  build-kpz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/build-kpz.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kpz
+          path: dist/*.kpz

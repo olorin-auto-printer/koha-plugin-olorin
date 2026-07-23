@@ -1,0 +1,27 @@
+{
+  "name": "koha-plugin-olorin",
+  "version": "1.0.0",
+  "description": "Koha plugin for Olorin silent printing — kpz builder and JS test tooling",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "author": "Kyle M Hall",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "lint": "eslint Koha/Plugin/Com/OlorinAutoPrinter/Olorin/js tests e2e scripts && prettier --check .",
+    "format": "prettier --write .",
+    "build:kpz": "node scripts/build-kpz.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.9.6",
+    "vitest": "^4.1.10",
+    "ws": "^8.21.1"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tt
+*.pm
+t/
+LICENSE
